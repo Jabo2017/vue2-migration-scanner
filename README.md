@@ -14,6 +14,10 @@ npx vue2-migration-scanner               # 扫描当前目录
 npx vue2-migration-scanner ./src         # 扫描指定目录
 ```
 
+![Vue 2 → Vue 3 迁移债务报告 · vue-element-admin 真实扫描样例](docs/report-vea.png)
+
+> 真实样例：[vue-element-admin](https://github.com/PanJiaChen/vue-element-admin)（MIT）—— 185 处命中 / MDI 466.5 / slot-scope 98 处。[在线完整报告](https://jabo2017.github.io/vue2-migration-scanner/)
+
 ---
 
 ## 解决什么问题
