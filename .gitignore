@@ -11,3 +11,7 @@ report.json
 report.html
 report.md
 baseline.json
+
+# 但测试夹具里的「假产物目录」要保留 —— 它们用来验证默认忽略规则真的生效
+!tests/fixtures/**/node_modules/
+!tests/fixtures/**/dist/
