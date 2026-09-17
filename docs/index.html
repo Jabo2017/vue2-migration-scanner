@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vue 2 迁移债务报告 · vue-element-admin (github.com/PanJiaChen/vue-element-admin)</title>
+<style>
+ :root{--ink:#1f2430;--muted:#6b7383;--line:#e6e9f0;--bg:#f7f8fc;--good:#1a7f4b;--bad:#c0274a}
+ *{box-sizing:border-box}
+ body{margin:0;padding:40px 24px;background:var(--bg);color:var(--ink);
+   font-family:'PingFang SC','Microsoft YaHei',system-ui,-apple-system,sans-serif;line-height:1.6}
+ .wrap{max-width:1000px;margin:0 auto}
+ h1{font-size:22px;margin:0 0 4px;letter-spacing:-.3px}
+ h2{font-size:16px;margin:34px 0 12px} h3{font-size:14px;margin:0 0 8px}
+ .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+ .sub code{font-size:12px}
+ .cards{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+ .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;min-width:150px;flex:1}
+ .card b{display:block;font-size:26px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+ .card b.good{color:var(--good)} .card b.bad{color:var(--bad)}
+ .card span{color:var(--muted);font-size:12px}
+ table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+ th,td{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13.5px;text-align:left;vertical-align:top}
+ tr:last-child td{border-bottom:none}
+ th{background:#fafbff;font-size:12px;color:var(--muted);font-weight:600}
+ td.n{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+ td.w,td.hint{color:var(--muted)} td.hint{font-size:12.5px}
+ td.n.good{color:var(--good)} td.n.bad{color:var(--bad)}
+ .lv{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+ .lv.high{background:#fdecef;color:#c0274a}
+ .lv.medium{background:#fff5e6;color:#a86a00}
+ .lv.low{background:#eef1f6;color:#5b6472}
+ section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:12px}
+ section h3 em{color:var(--muted);font-style:normal;font-weight:400;font-size:12px}
+ ul{margin:0;padding:0;list-style:none}
+ li{display:flex;gap:10px;padding:5px 0;border-bottom:1px dashed #eef0f5;font-size:12.5px;align-items:baseline}
+ li:last-child{border-bottom:none}
+ li code{color:#4f5ded;white-space:nowrap;font-size:12px}
+ li span{color:var(--muted);font-family:ui-monospace,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ li.more{color:var(--muted)}
+ .bar{display:block;height:8px;border-radius:4px;background:#c9d3ff}
+ footer{color:var(--muted);font-size:12px;margin-top:28px;text-align:center}
+ footer a{color:var(--muted)}
+</style></head><body><div class="wrap">
+<h1>Vue 2 → Vue 3 迁移债务报告</h1>
+<div class="sub">目标：<code>vue-element-admin (github.com/PanJiaChen/vue-element-admin)</code>　·　生成于 2026/9/17 16:41:29　·　耗时 52ms</div>
+<div class="cards">
+  <div class="card"><b>185</b><span>遗留写法命中</span></div>
+  <div class="card"><b>466.5</b><span>迁移债务指数 MDI</span></div>
+  <div class="card"><b>高</b><span>迁移量级 · 建议先立规范再动，避免边改边新增</span></div>
+  <div class="card"><b>72</b><span>涉及文件</span></div>
+  <div class="card"><b>6</b><span>依赖风险</span></div>
+</div>
+
+<h2>按检测项汇总</h2>
+<table><thead><tr><th>级别</th><th>检测项</th><th>命中</th><th>权重</th><th>处置建议</th></tr></thead>
+<tbody><tr>
+      <td><span class="lv high">high</span></td>
+      <td>beforeDestroy / destroyed 生命周期</td>
+      <td class="n">20</td>
+      <td class="w">×2</td>
+      <td class="hint">Vue 3 重命名为 beforeUnmount / unmounted，改名字即可，但要逐一确认清理逻辑</td>
+    </tr>
+<tr>
+      <td><span class="lv high">high</span></td>
+      <td>.sync 修饰符</td>
+      <td class="n">14</td>
+      <td class="w">×1</td>
+      <td class="hint">Vue 3 移除 .sync，改为 v-model:propName；子组件 emit 名从 update:xxx 保持一致</td>
+    </tr>
+<tr>
+      <td><span class="lv high">high</span></td>
+      <td>slot-scope / slot=&quot;name&quot; 旧插槽语法</td>
+      <td class="n">98</td>
+      <td class="w">×3</td>
+      <td class="hint">Vue 3 只认 v-slot；&lt;template slot-scope=&quot;x&quot;&gt; 要改成 &lt;template #default=&quot;x&quot;&gt;</td>
+    </tr>
+<tr>
+      <td><span class="lv high">high</span></td>
+      <td>filters 过滤器</td>
+      <td class="n">14</td>
+      <td class="w">×2</td>
+      <td class="hint">Vue 3 移除 filters 选项，改成 computed 或纯函数调用（模板里写 {{ fmt(x) }}）</td>
+    </tr>
+<tr>
+      <td><span class="lv high">high</span></td>
+      <td>Vue 全局 API（prototype / use / set ...）</td>
+      <td class="n">19</td>
+      <td class="w">×3</td>
+      <td class="hint">Vue 3 改为 app.use / app.config.globalProperties；Vue.set|delete 直接删除（响应式系统已覆盖）</td>
+    </tr>
+<tr>
+      <td><span class="lv high">high</span></td>
+      <td>$on / $off / $once / $listeners / $children</td>
+      <td class="n">4</td>
+      <td class="w">×3</td>
+      <td class="hint">Vue 3 移除实例事件 API 与 $listeners/$children；EventBus 改用 mitt，父子通信改用 props/emit</td>
+    </tr>
+<tr>
+      <td><span class="lv medium">medium</span></td>
+      <td>functional: true 函数式组件</td>
+      <td class="n">1</td>
+      <td class="w">×2</td>
+      <td class="hint">改成普通函数组件（props/emits 显式声明），Vue 3 中函数式组件是纯函数</td>
+    </tr>
+<tr>
+      <td><span class="lv medium">medium</span></td>
+      <td>Webpack / vue-cli 强耦合写法</td>
+      <td class="n">6</td>
+      <td class="w">×1</td>
+      <td class="hint">Rspack 兼容大部分 loader 链，但 require.context 的写法、chainWebpack 配置要重写</td>
+    </tr>
+<tr>
+      <td><span class="lv medium">medium</span></td>
+      <td>mixins 引用</td>
+      <td class="n">9</td>
+      <td class="w">×1.5</td>
+      <td class="hint">mixins 在 Vue 3 仍可用但同样导致数据来源不透明；建议迁移期换成组合式函数（composables）</td>
+    </tr></tbody></table>
+<h2>最重的文件</h2><table><thead><tr><th>文件</th><th>命中</th><th></th></tr></thead><tbody><tr><td><code>src\views\table\complex-table.vue</code></td><td class="n">17</td><td><span class="bar" style="width:100%"></span></td></tr>
+<tr><td><code>src\views\example\list.vue</code></td><td class="n">10</td><td><span class="bar" style="width:59%"></span></td></tr>
+<tr><td><code>src\views\table\drag-table.vue</code></td><td class="n">9</td><td><span class="bar" style="width:53%"></span></td></tr>
+<tr><td><code>src\views\tab\components\TabPane.vue</code></td><td class="n">8</td><td><span class="bar" style="width:47%"></span></td></tr>
+<tr><td><code>src\views\table\inline-edit-table.vue</code></td><td class="n">8</td><td><span class="bar" style="width:47%"></span></td></tr>
+<tr><td><code>src\views\components-demo\mixin.vue</code></td><td class="n">6</td><td><span class="bar" style="width:35%"></span></td></tr>
+<tr><td><code>src\views\dashboard\admin\components\TransactionTable.vue</code></td><td class="n">6</td><td><span class="bar" style="width:35%"></span></td></tr>
+<tr><td><code>src\views\excel\export-excel.vue</code></td><td class="n">5</td><td><span class="bar" style="width:29%"></span></td></tr>
+<tr><td><code>src\views\excel\merge-header.vue</code></td><td class="n">5</td><td><span class="bar" style="width:29%"></span></td></tr>
+<tr><td><code>src\views\excel\select-excel.vue</code></td><td class="n">5</td><td><span class="bar" style="width:29%"></span></td></tr>
+<tr><td><code>src\views\permission\role.vue</code></td><td class="n">5</td><td><span class="bar" style="width:29%"></span></td></tr>
+<tr><td><code>src\views\zip\index.vue</code></td><td class="n">5</td><td><span class="bar" style="width:29%"></span></td></tr>
+<tr><td><code>src\components\ErrorLog\index.vue</code></td><td class="n">4</td><td><span class="bar" style="width:24%"></span></td></tr>
+<tr><td><code>src\views\components-demo\split-pane.vue</code></td><td class="n">4</td><td><span class="bar" style="width:24%"></span></td></tr>
+<tr><td><code>src\main.js</code></td><td class="n">3</td><td><span class="bar" style="width:18%"></span></td></tr></tbody></table>
+<h2>依赖风险</h2><table><thead><tr><th>包</th><th>当前版本</th><th>处置</th></tr></thead><tbody><tr><td><code>echarts</code></td><td>4.2.1</td><td>echarts 4 及以下 —— 5.x API 有破坏性变更</td></tr>
+<tr><td><code>element-ui</code></td><td>2.13.2</td><td>Vue 2 生态 UI 库 —— 需换 element-plus / vant 4</td></tr>
+<tr><td><code>vue</code></td><td>2.6.10</td><td>Vue 2 —— 迁移主体，升到 3.x</td></tr>
+<tr><td><code>vue-router</code></td><td>3.0.2</td><td>Vue Router 2/3 —— 升到 4/5，API 从 new Router() 改为 createRouter()</td></tr>
+<tr><td><code>vuex</code></td><td>3.1.0</td><td>Vuex 3 —— 官方推荐迁移到 Pinia</td></tr>
+<tr><td><code>@vue/cli-service</code></td><td>4.4.4</td><td>vue-cli —— 换 Rspack/Vite 构建</td></tr></tbody></table>
+<h2>兼容性提醒（能装但要确认）</h2><table><thead><tr><th>包</th><th>当前版本</th><th>说明</th></tr></thead><tbody><tr><td><code>element-ui</code></td><td>2.13.2</td><td>Vue 2 生态 UI 库 —— 需换 element-plus / vant 4 / view-ui-plus</td></tr>
+<tr><td><code>vuedraggable</code></td><td>2.20.0</td><td>vuedraggable 2 —— Vue 3 需换 vuedraggable@next 或 vue-draggable-plus</td></tr>
+<tr><td><code>vuex</code></td><td>3.1.0</td><td>Vuex 3 —— Vue 3 里能跑但官方推荐 Pinia；this.$store 在 setup 中不可用</td></tr></tbody></table>
+<h2>逐条明细（含行号）</h2>
+<section><h3>beforeDestroy / destroyed 生命周期 <em>20 处</em></h3><ul><li><code>src\components\BackToTop\index.vue:50</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Charts\Keyboard.vue:37</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Charts\LineMarker.vue:37</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Charts\MixChart.vue:37</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Charts\mixins\resize.js:22</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Dropzone\index.vue:167</code><span>destroyed() {</span></li>
+<li><code>src\components\ImageCropper\index.vue:403</code><span>destroyed() {</span></li>
+<li><code>src\components\MarkdownEditor\index.vue:83</code><span>destroyed() {</span></li>
+<li><code>src\components\RightPanel\index.vue:55</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Screenfull\index.vue:20</code><span>beforeDestroy() {</span></li>
+<li><code>src\components\Sticky\index.vue:48</code><span>destroyed() {</span></li>
+<li><code>src\components\Tinymce\index.vue:101</code><span>destroyed() {</span></li>
+<li><code>src\layout\components\TagsView\ScrollPane.vue:25</code><span>beforeDestroy() {</span></li>
+<li><code>src\layout\mixin\ResizeHandler.js:17</code><span>beforeDestroy() {</span></li>
+<li><code>src\views\dashboard\admin\components\BarChart.vue:38</code><span>beforeDestroy() {</span></li>
+<li><code>src\views\dashboard\admin\components\LineChart.vue:52</code><span>beforeDestroy() {</span></li>
+<li><code>src\views\dashboard\admin\components\mixins\resize.js:19</code><span>beforeDestroy() {</span></li>
+<li><code>src\views\dashboard\admin\components\PieChart.vue:36</code><span>beforeDestroy() {</span></li>
+<li><code>src\views\dashboard\admin\components\RaddarChart.vue:38</code><span>beforeDestroy() {</span></li>
+<li><code>src\views\login\index.vue:137</code><span>destroyed() {</span></li></ul></section>
+<section><h3>.sync 修饰符 <em>14 处</em></h3><ul><li><code>src\components\ErrorLog\index.vue:9</code><span>&lt;el-dialog :visible.sync=&quot;dialogTableVisible&quot; width=&quot;80%&quot; append-to-body&gt;</span></li>
+<li><code>src\components\Pagination\index.vue:5</code><span>:current-page.sync=&quot;currentPage&quot;</span></li>
+<li><code>src\components\Pagination\index.vue:6</code><span>:page-size.sync=&quot;pageSize&quot;</span></li>
+<li><code>src\components\Tinymce\components\EditorImage.vue:6</code><span>&lt;el-dialog :visible.sync=&quot;dialogVisible&quot;&gt;</span></li>
+<li><code>src\views\components-demo\drag-dialog.vue:6</code><span>&lt;el-dialog v-el-drag-dialog :visible.sync=&quot;dialogTableVisible&quot; title=&quot;Shipping address&quot; @dragDialog=&quot;handleDrag&quot;&gt;</span></li>
+<li><code>src\views\error-page\401.vue:31</code><span>&lt;el-dialog :visible.sync=&quot;dialogVisible&quot; title=&quot;随便看&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:55</code><span>&lt;pagination v-show=&quot;total&gt;0&quot; :total=&quot;total&quot; :page.sync=&quot;listQuery.page&quot; :limit.sync=&quot;listQuery.limit&quot; @pagination=&quot;getLi</span></li>
+<li><code>src\views\example\list.vue:55</code><span>&lt;pagination v-show=&quot;total&gt;0&quot; :total=&quot;total&quot; :page.sync=&quot;listQuery.page&quot; :limit.sync=&quot;listQuery.limit&quot; @pagination=&quot;getLi</span></li>
+<li><code>src\views\login\index.vue:66</code><span>&lt;el-dialog title=&quot;Or connect with&quot; :visible.sync=&quot;showDialog&quot;&gt;</span></li>
+<li><code>src\views\permission\role.vue:29</code><span>&lt;el-dialog :visible.sync=&quot;dialogVisible&quot; :title=&quot;dialogType==='edit'?'Edit Role':'New Role'&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:100</code><span>&lt;pagination v-show=&quot;total&gt;0&quot; :total=&quot;total&quot; :page.sync=&quot;listQuery.page&quot; :limit.sync=&quot;listQuery.limit&quot; @pagination=&quot;getLi</span></li>
+<li><code>src\views\table\complex-table.vue:100</code><span>&lt;pagination v-show=&quot;total&gt;0&quot; :total=&quot;total&quot; :page.sync=&quot;listQuery.page&quot; :limit.sync=&quot;listQuery.limit&quot; @pagination=&quot;getLi</span></li>
+<li><code>src\views\table\complex-table.vue:102</code><span>&lt;el-dialog :title=&quot;textMap[dialogStatus]&quot; :visible.sync=&quot;dialogFormVisible&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:137</code><span>&lt;el-dialog :visible.sync=&quot;dialogPvVisible&quot; title=&quot;Reading statistics&quot;&gt;</span></li></ul></section>
+<section><h3>slot-scope / slot=&quot;name&quot; 旧插槽语法 <em>98 处</em></h3><ul><li><code>src\components\ErrorLog\index.vue:10</code><span>&lt;div slot=&quot;title&quot;&gt;</span></li>
+<li><code>src\components\ErrorLog\index.vue:16</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\components\ErrorLog\index.vue:40</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\components\SizeSelect\index.vue:6</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot;&gt;</span></li>
+<li><code>src\layout\components\Navbar.vue:26</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot;&gt;</span></li>
+<li><code>src\layout\components\Sidebar\Item.vue:28</code><span>vnodes.push(&lt;span slot='title'&gt;{(title)}&lt;/span&gt;)</span></li>
+<li><code>src\layout\components\Sidebar\SidebarItem.vue:12</code><span>&lt;template slot=&quot;title&quot;&gt;</span></li>
+<li><code>src\views\components-demo\mixin.vue:5</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\components-demo\mixin.vue:46</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\components-demo\mixin.vue:63</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\components-demo\mixin.vue:76</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\components-demo\mixin.vue:89</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\components-demo\mixin.vue:102</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\components-demo\split-pane.vue:9</code><span>&lt;template slot=&quot;paneL&quot;&gt;</span></li>
+<li><code>src\views\components-demo\split-pane.vue:12</code><span>&lt;template slot=&quot;paneR&quot;&gt;</span></li>
+<li><code>src\views\components-demo\split-pane.vue:14</code><span>&lt;template slot=&quot;paneL&quot;&gt;</span></li>
+<li><code>src\views\components-demo\split-pane.vue:17</code><span>&lt;template slot=&quot;paneR&quot;&gt;</span></li>
+<li><code>src\views\components-demo\sticky.vue:8</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot; class=&quot;no-border&quot;&gt;</span></li>
+<li><code>src\views\components-demo\sticky.vue:21</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot; class=&quot;no-padding no-border&quot; style=&quot;width:300px&quot;&gt;</span></li>
+<li><code>src\views\components-demo\sticky.vue:23</code><span>&lt;template slot=&quot;prepend&quot;&gt;</span></li>
+<li><code>src\views\dashboard\admin\components\BoxCard.vue:3</code><span>&lt;div slot=&quot;header&quot; class=&quot;box-card-header&quot;&gt;</span></li>
+<li><code>src\views\dashboard\admin\components\TransactionTable.vue:4</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\dashboard\admin\components\TransactionTable.vue:9</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\dashboard\admin\components\TransactionTable.vue:14</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\example\components\Dropdown\Comment.vue:7</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot; class=&quot;no-padding&quot;&gt;</span></li>
+<li><code>src\views\example\components\Dropdown\Platform.vue:7</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot; class=&quot;no-border&quot;&gt;</span></li>
+<li><code>src\views\example\components\Dropdown\SourceUrl.vue:7</code><span>&lt;el-dropdown-menu slot=&quot;dropdown&quot; class=&quot;no-padding no-border&quot; style=&quot;width:400px&quot;&gt;</span></li>
+<li><code>src\views\example\components\Dropdown\SourceUrl.vue:10</code><span>&lt;template slot=&quot;prepend&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:5</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:11</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:17</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:23</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:29</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:37</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\example\list.vue:45</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\export-excel.vue:18</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\export-excel.vue:23</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\export-excel.vue:28</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\export-excel.vue:33</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\export-excel.vue:38</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\merge-header.vue:16</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\merge-header.vue:22</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\merge-header.vue:27</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\merge-header.vue:32</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\merge-header.vue:38</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\select-excel.vue:22</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\select-excel.vue:27</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\select-excel.vue:32</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\select-excel.vue:37</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\excel\select-excel.vue:42</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\icons\index.vue:12</code><span>&lt;div slot=&quot;content&quot;&gt;</span></li>
+<li><code>src\views\icons\index.vue:27</code><span>&lt;div slot=&quot;content&quot;&gt;</span></li>
+<li><code>src\views\permission\role.vue:7</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\permission\role.vue:12</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\permission\role.vue:17</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\permission\role.vue:22</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\profile\components\UserCard.vue:3</code><span>&lt;div slot=&quot;header&quot; class=&quot;clearfix&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:10</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:16</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:22</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:29</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:35</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:41</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:47</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:39</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:44</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:49</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:55</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:60</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:65</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:70</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:76</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:83</code><span>&lt;template slot-scope=&quot;{row,$index}&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:127</code><span>&lt;div slot=&quot;footer&quot; class=&quot;dialog-footer&quot;&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:142</code><span>&lt;span slot=&quot;footer&quot; class=&quot;dialog-footer&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:6</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:12</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:18</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:24</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:30</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:36</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:42</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\drag-table.vue:50</code><span>&lt;template slot-scope=&quot;{}&quot;&gt;</span></li>
+<li><code>src\views\table\dynamic-table\components\FixedThead.vue:20</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\table\dynamic-table\components\UnfixedThead.vue:20</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:5</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:11</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:17</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:23</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:29</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:37</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\table\inline-edit-table.vue:55</code><span>&lt;template slot-scope=&quot;{row}&quot;&gt;</span></li>
+<li><code>src\views\theme\index.vue:4</code><span>&lt;div slot=&quot;header&quot;&gt;</span></li>
+<li><code>src\views\zip\index.vue:9</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\zip\index.vue:14</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\zip\index.vue:19</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\zip\index.vue:24</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li>
+<li><code>src\views\zip\index.vue:29</code><span>&lt;template slot-scope=&quot;scope&quot;&gt;</span></li></ul></section>
+<section><h3>filters 过滤器 <em>14 处</em></h3><ul><li><code>src\views\dashboard\admin\components\BoxCard.vue:37</code><span>filters: {</span></li>
+<li><code>src\views\dashboard\admin\components\TodoList\index.vue:26</code><span>{{ remaining | pluralize('item') }} left</span></li>
+<li><code>src\views\dashboard\admin\components\TodoList\index.vue:30</code><span>&lt;a :class=&quot;{ selected: visibility === key }&quot; @click.prevent=&quot;visibility = key&quot;&gt;{{ key | capitalize }}&lt;/a&gt;</span></li>
+<li><code>src\views\dashboard\admin\components\TodoList\index.vue:61</code><span>filters: {</span></li>
+<li><code>src\views\dashboard\admin\components\TransactionTable.vue:5</code><span>{{ scope.row.order_no | orderNoFilter }}</span></li>
+<li><code>src\views\dashboard\admin\components\TransactionTable.vue:10</code><span>¥{{ scope.row.price | toThousandFilter }}</span></li>
+<li><code>src\views\dashboard\admin\components\TransactionTable.vue:27</code><span>filters: {</span></li>
+<li><code>src\views\example\list.vue:66</code><span>filters: {</span></li>
+<li><code>src\views\profile\components\UserCard.vue:16</code><span>&lt;div class=&quot;user-role text-center text-muted&quot;&gt;{{ user.role | uppercaseFirst }}&lt;/div&gt;</span></li>
+<li><code>src\views\tab\components\TabPane.vue:60</code><span>filters: {</span></li>
+<li><code>src\views\table\complex-table.vue:51</code><span>&lt;el-tag&gt;{{ row.type | typeFilter }}&lt;/el-tag&gt;</span></li>
+<li><code>src\views\table\complex-table.vue:172</code><span>filters: {</span></li>
+<li><code>src\views\table\drag-table.vue:70</code><span>filters: {</span></li>
+<li><code>src\views\table\inline-edit-table.vue:85</code><span>filters: {</span></li></ul></section>
+<section><h3>Vue 全局 API（prototype / use / set ...） <em>19 处</em></h3><ul><li><code>src\directive\clipboard\index.js:4</code><span>Vue.directive('Clipboard', Clipboard)</span></li>
+<li><code>src\directive\clipboard\index.js:9</code><span>Vue.use(install); // eslint-disable-line</span></li>
+<li><code>src\directive\el-drag-dialog\index.js:4</code><span>Vue.directive('el-drag-dialog', drag)</span></li>
+<li><code>src\directive\el-drag-dialog\index.js:9</code><span>Vue.use(install); // eslint-disable-line</span></li>
+<li><code>src\directive\el-table\index.js:4</code><span>Vue.directive('el-height-adaptive-table', adaptive)</span></li>
+<li><code>src\directive\el-table\index.js:9</code><span>Vue.use(install); // eslint-disable-line</span></li>
+<li><code>src\directive\permission\index.js:4</code><span>Vue.directive('permission', permission)</span></li>
+<li><code>src\directive\permission\index.js:9</code><span>Vue.use(install); // eslint-disable-line</span></li>
+<li><code>src\directive\sticky.js:4</code><span>Vue.directive('sticky', {</span></li>
+<li><code>src\directive\waves\index.js:4</code><span>Vue.directive('waves', waves)</span></li>
+<li><code>src\directive\waves\index.js:9</code><span>Vue.use(install); // eslint-disable-line</span></li>
+<li><code>src\icons\index.js:5</code><span>Vue.component('svg-icon', SvgIcon)</span></li>
+<li><code>src\main.js:36</code><span>Vue.use(Element, {</span></li>
+<li><code>src\main.js:43</code><span>Vue.filter(key, filters[key])</span></li>
+<li><code>src\main.js:48</code><span>new Vue({</span></li>
+<li><code>src\router\index.js:4</code><span>Vue.use(Router)</span></li>
+<li><code>src\store\index.js:5</code><span>Vue.use(Vuex)</span></li>
+<li><code>src\utils\clipboard.js:5</code><span>Vue.prototype.$message({</span></li>
+<li><code>src\utils\clipboard.js:13</code><span>Vue.prototype.$message({</span></li></ul></section>
+<section><h3>$on / $off / $once / $listeners / $children <em>4 处</em></h3><ul><li><code>src\components\DragSelect\index.vue:2</code><span>&lt;el-select ref=&quot;dragSelect&quot; v-model=&quot;selectVal&quot; v-bind=&quot;$attrs&quot; class=&quot;drag-select&quot; multiple v-on=&quot;$listeners&quot;&gt;</span></li>
+<li><code>src\components\SvgIcon\index.vue:2</code><span>&lt;div v-if=&quot;isExternal&quot; :style=&quot;styleExternalIcon&quot; class=&quot;svg-external-icon svg-icon&quot; v-on=&quot;$listeners&quot; /&gt;</span></li>
+<li><code>src\components\SvgIcon\index.vue:3</code><span>&lt;svg v-else :class=&quot;svgClass&quot; aria-hidden=&quot;true&quot; v-on=&quot;$listeners&quot;&gt;</span></li>
+<li><code>tests\unit\components\Hamburger.spec.js:7</code><span>wrapper.vm.$on('toggleClick', mockFn)</span></li></ul></section>
+<section><h3>functional: true 函数式组件 <em>1 处</em></h3><ul><li><code>src\layout\components\Sidebar\Item.vue:4</code><span>functional: true,</span></li></ul></section>
+<section><h3>Webpack / vue-cli 强耦合写法 <em>6 处</em></h3><ul><li><code>mock\mock-server.js:37</code><span>url: new RegExp(`${process.env.VUE_APP_BASE_API}${url}`),</span></li>
+<li><code>src\icons\index.js:7</code><span>const req = require.context('./svg', false, /\.svg$/)</span></li>
+<li><code>src\store\index.js:8</code><span>const modulesFiles = require.context('./modules', true, /\.js$/)</span></li>
+<li><code>src\utils\request.js:8</code><span>baseURL: process.env.VUE_APP_BASE_API, // url = base url + request url</span></li>
+<li><code>src\views\icons\svg-icons.js:1</code><span>const req = require.context('../../icons/svg', false, /\.svg$/)</span></li>
+<li><code>vue.config.js:51</code><span>chainWebpack(config) {</span></li></ul></section>
+<section><h3>mixins 引用 <em>9 处</em></h3><ul><li><code>src\components\Charts\Keyboard.vue:10</code><span>mixins: [resize],</span></li>
+<li><code>src\components\Charts\LineMarker.vue:10</code><span>mixins: [resize],</span></li>
+<li><code>src\components\Charts\MixChart.vue:10</code><span>mixins: [resize],</span></li>
+<li><code>src\layout\components\Sidebar\SidebarItem.vue:37</code><span>mixins: [FixiOSBug],</span></li>
+<li><code>src\layout\index.vue:34</code><span>mixins: [ResizeMixin],</span></li>
+<li><code>src\views\dashboard\admin\components\BarChart.vue:13</code><span>mixins: [resize],</span></li>
+<li><code>src\views\dashboard\admin\components\LineChart.vue:11</code><span>mixins: [resize],</span></li>
+<li><code>src\views\dashboard\admin\components\PieChart.vue:11</code><span>mixins: [resize],</span></li>
+<li><code>src\views\dashboard\admin\components\RaddarChart.vue:13</code><span>mixins: [resize],</span></li></ul></section>
+<footer>由 <a href="https://github.com/Jabo2017/vue2-migration-scanner">vue2-migration-scanner</a> 生成</footer>
+</div></body></html>

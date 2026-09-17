@@ -1,0 +1,56 @@
+{
+  "name": "vue2-migration-scanner",
+  "version": "1.0.0",
+  "description": "扫描 Vue 2 项目遗留写法（生命周期 / .sync / slot-scope / filters / 全局 API / $on / mixins）与依赖风险，输出文件:行号清单、HTML/Markdown 报告，并用 MDI 指数把迁移成本量化成数字。零依赖，npx 直接跑",
+  "type": "module",
+  "bin": {
+    "vue2-scan": "bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "scan": "node bin/cli.mjs",
+    "prepublishOnly": "node --test"
+  },
+  "keywords": [
+    "vue",
+    "vue2",
+    "vue3",
+    "migration",
+    "migrate",
+    "upgrade",
+    "scanner",
+    "scan",
+    "static-analysis",
+    "technical-debt",
+    "legacy",
+    "cli",
+    "zero-dependency",
+    "vue2-to-vue3",
+    "lifecycle",
+    "sync-modifier",
+    "slot-scope"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Jabo",
+    "url": "https://github.com/Jabo2017"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jabo2017/vue2-migration-scanner.git"
+  },
+  "homepage": "https://github.com/Jabo2017/vue2-migration-scanner#readme",
+  "bugs": {
+    "url": "https://github.com/Jabo2017/vue2-migration-scanner/issues"
+  },
+  "private": false
+}

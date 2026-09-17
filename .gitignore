@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-demo/
+coverage/
+*.log
+.DS_Store
+.idea/
+.vscode/
+# 扫描产物不进版本控制（demo 报告在 docs/ 里单独提交）
+report.json
+report.html
+report.md
+baseline.json
