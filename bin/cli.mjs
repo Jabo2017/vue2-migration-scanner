@@ -13,7 +13,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RULES } from '../src/rules.mjs'
-import { scanText, summarize, checkDeps, checkLibCompat, diffReports } from '../src/scan.mjs'
+import { scanText, summarize, checkDeps, checkLibCompat, diffReports, groupDirs, detectContext } from '../src/scan.mjs'
+import { scanContracts } from '../src/contracts.mjs'
 import { walk, readSource, findPackageJson } from '../src/walk.mjs'
 import { renderHtml, renderMarkdown, topFiles } from '../src/report-html.mjs'
 
@@ -44,6 +45,9 @@ ${c.bold('选项')}
   --html <file>       输出 HTML 报告
   --md <file>         输出 Markdown 报告（适合贴 PR / 周报）
   --baseline <file>   对比上次的 JSON 报告，输出迁移进度
+  --by-dir            终端里按目录聚合展示（迁移排期按模块组织，JSON/HTML/MD 报告始终包含）
+  --contracts         v-model 契约扫描：跨文件关联「声明 model 选项的组件」与「无参 v-model 调用方」，
+                      找出 Vue 3 下必须改成 v-model:propName 的调用点（只做相对 import 的确定性解析）
   --label <text>      报告里显示的目录名（默认绝对路径；分享报告时建议指定，避免泄露本机路径）
   --max-mdi <n>       MDI 超过该值则以退出码 1 结束
   --ci                等价于 --max-mdi 200 --quiet
@@ -106,7 +110,9 @@ if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
 
 const t0 = Date.now()
 const { files, skippedDirs } = walk(targetDir, { exts, extraIgnore })
+const wantContracts = flag('contracts')
 const findings = []
+const entries = []
 let skipped = 0
 for (const f of files) {
   const code = readSource(f)
@@ -114,18 +120,27 @@ for (const f of files) {
     skipped++
     continue
   }
-  findings.push(...scanText(code, path.relative(targetDir, f)))
+  const rel = path.relative(targetDir, f)
+  findings.push(...scanText(code, rel))
+  if (wantContracts) entries.push({ file: rel, code })
 }
 const summary = summarize(findings)
+const byDir = groupDirs(findings)
+
+/** v-model 契约扫描（--contracts）：跨文件确定性关联，结果独立于 MDI */
+let contracts = null
+if (wantContracts) contracts = scanContracts(entries)
 
 let deps = []
 let libCompat = []
+let context = { vueMajor: null, hasCompat: false, mode: 'unknown', note: null }
 const pkgPath = findPackageJson(targetDir)
 if (pkgPath) {
   try {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
     deps = checkDeps(pkg)
     libCompat = checkLibCompat(pkg)
+    context = detectContext(pkg)
   } catch {
     /* package.json 解析失败则跳过，不阻断源码扫描 */
   }
@@ -160,6 +175,7 @@ if (!quiet) {
   console.log('')
   console.log(`  ${c.bold('Vue 2 迁移债务扫描')} ${c.dim('·')} ${label}`)
   console.log(`  ${c.dim(`扫描 ${remaining} 个文件（跳过 ${skipped}），耗时 ${elapsed}ms`)}`)
+  if (context.note) console.log(`  ${c.yellow('ℹ')} ${context.note}`)
   if (skippedDirs.length) {
     const listed = skippedDirs.slice(0, 6).join('、')
     const more = skippedDirs.length > 6 ? ` 等 ${skippedDirs.length} 个` : ''
@@ -191,6 +207,34 @@ if (!quiet) {
       const bar = '█'.repeat(Math.max(1, Math.round((h.count / heavy[0].count) * 20)))
       console.log(`   ${String(h.count).padStart(4)}  ${bar} ${c.dim(h.file)}`)
     }
+  }
+
+  if (flag('by-dir') && byDir.length) {
+    console.log('')
+    console.log(`  ${c.bold('按目录聚合')} ${c.dim('（Top 15，按 MDI 降序；完整清单见 JSON 报告的 byDir 字段）')}`)
+    console.log(`  ${'目录'.padEnd(44)}${'命中'.padStart(6)}${'MDI'.padStart(8)}${'文件'.padStart(6)}`)
+    for (const d of byDir.slice(0, 15)) {
+      console.log(`  ${c.dim(d.dir).padEnd(52)}${String(d.count).padStart(6)}${String(d.mdi).padStart(8)}${String(d.files).padStart(6)}`)
+    }
+  }
+
+  if (contracts) {
+    const { modelComponents, mismatches, unresolvedCount } = contracts
+    console.log('')
+    console.log(`  ${c.bold('v-model 契约扫描')} ${c.dim('（--contracts；不计入 MDI，完整清单见 JSON 报告的 contracts 字段）')}`)
+    console.log(`   声明 model 选项的组件：${modelComponents.length} 个`)
+    if (mismatches.length) {
+      console.log(`   ${c.red(`✗ 需改 v-model:propName 的调用点：${mismatches.length} 处`)}`)
+      for (const m of mismatches.slice(0, 20)) {
+        console.log(`     · ${c.dim(`${m.file}:${m.line}`)} <${m.tag}> → v-model:${m.prop}（组件声明 prop:${m.prop} / event:${m.event}）`)
+      }
+      if (mismatches.length > 20) console.log(`     … 另有 ${mismatches.length - 20} 处，见 JSON 报告`)
+    } else {
+      console.log(`   ${c.green('✓')} 确定关联的调用点中无契约错配`)
+    }
+    console.log(
+      `   ${c.dim(`无参 v-model 调用点中未能关联的 ${unresolvedCount} 处（别名 import / 全局注册组件无法确定性解析，需人工核对；清单见 JSON）`)}`,
+    )
   }
 
   if (deps.length) {
@@ -229,7 +273,7 @@ if (opt('json', '')) {
   fs.writeFileSync(
     out,
     JSON.stringify(
-      { target: targetDir, label, scannedAt: new Date().toISOString(), version: PKG.version, summary, deps, libCompat, filesScanned: remaining, skippedDirs, findings },
+      { target: targetDir, label, scannedAt: new Date().toISOString(), version: PKG.version, context, summary, byDir, deps, libCompat, contracts, filesScanned: remaining, skippedDirs, findings },
       null,
       1,
     ),
@@ -240,14 +284,14 @@ if (opt('json', '')) {
 if (opt('html', '')) {
   const out = opt('html')
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true })
-  fs.writeFileSync(out, renderHtml({ target: targetDir, label, summary, deps, libCompat, findings, elapsed, diff }))
+  fs.writeFileSync(out, renderHtml({ target: targetDir, label, context, summary, byDir, deps, libCompat, contracts, findings, elapsed, diff }))
   console.log(`  HTML 报告：${out}`)
 }
 
 if (opt('md', '')) {
   const out = opt('md')
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true })
-  fs.writeFileSync(out, renderMarkdown({ target: targetDir, label, summary, deps, libCompat, findings, diff }))
+  fs.writeFileSync(out, renderMarkdown({ target: targetDir, label, context, summary, byDir, deps, libCompat, contracts, findings, diff }))
   console.log(`  Markdown 报告：${out}`)
 }
 

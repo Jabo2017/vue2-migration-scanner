@@ -19,7 +19,7 @@ export function topFiles(findings, limit = 15) {
  * @param {{ target: string, summary: any, deps: any[], libCompat: any[], findings: any[], elapsed: number, diff?: any }} data
  */
 export function renderHtml(data) {
-  const { summary: sum, deps, libCompat = [], findings, elapsed, diff } = data
+  const { summary: sum, deps, libCompat = [], findings, elapsed, diff, context, byDir = [], contracts } = data
   const target = data.label || data.target
   const relevant = RULES.filter((r) => sum.byRule[r.id])
 
@@ -57,6 +57,31 @@ export function renderHtml(data) {
         )}%"></span></td></tr>`,
     )
     .join('\n')
+
+  const dirRows = byDir
+    .slice(0, 15)
+    .map(
+      (d) =>
+        `<tr><td><code>${esc(d.dir)}</code></td><td class="n">${d.count}</td><td class="n">${d.mdi}</td><td class="n">${d.files}</td></tr>`,
+    )
+    .join('\n')
+
+  const contractBlock = contracts
+    ? `<h2>v-model 契约扫描（--contracts，不计入 MDI）</h2>
+<table><thead><tr><th>指标</th><th>数量</th><th>说明</th></tr></thead><tbody>
+<tr><td>声明 model 选项的组件</td><td class="n">${contracts.modelComponents.length}</td><td>非默认契约（prop/event ≠ value/input）</td></tr>
+<tr><td>需改 v-model:propName 的调用点</td><td class="n ${contracts.mismatches.length ? 'bad' : 'good'}">${contracts.mismatches.length}</td><td>确定性关联（相对 import）；组件声明 prop:event，调用方无参 v-model 必改</td></tr>
+<tr><td>未能关联的无参 v-model</td><td class="n">${contracts.unresolvedCount}</td><td>别名 import / 全局注册组件，需人工核对</td></tr>
+</tbody></table>
+${contracts.mismatches.length ? `<section><h3>错配调用点明细 <em>${contracts.mismatches.length} 处</em></h3><ul>${contracts.mismatches
+  .slice(0, 100)
+  .map(
+    (m) =>
+      `<li><code>${esc(m.file)}:${m.line}</code><span>&lt;${esc(m.tag)} v-model="${esc(m.expr)}"&gt; → v-model:${esc(m.prop)}（组件 ${esc(m.component)} 声明 prop:${esc(m.prop)}/event:${esc(m.event)}）</span></li>`,
+  )
+  .join('\n')}</ul></section>`
+  : ''}`
+    : ''
 
   const depRows = deps
     .map((d) => `<tr><td><code>${esc(d.name)}</code></td><td>${esc(d.version)}</td><td>${esc(d.tip)}</td></tr>`)
@@ -98,8 +123,9 @@ ${diff.rules
  .wrap{max-width:1000px;margin:0 auto}
  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.3px}
  h2{font-size:16px;margin:34px 0 12px} h3{font-size:14px;margin:0 0 8px}
- .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+ .sub{color:var(--muted);font-size:13px;margin-bottom:8px}
  .sub code{font-size:12px}
+ .ctx{background:#fff8e6;border:1px solid #f0dfb2;border-radius:10px;padding:10px 16px;font-size:13px;color:#8a6a00;margin-bottom:20px}
  .cards{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;min-width:150px;flex:1}
  .card b{display:block;font-size:26px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
@@ -130,6 +156,7 @@ ${diff.rules
 </style></head><body><div class="wrap">
 <h1>Vue 2 → Vue 3 迁移债务报告</h1>
 <div class="sub">目标：<code>${esc(target)}</code>　·　生成于 ${new Date().toLocaleString('zh-CN')}　·　耗时 ${elapsed}ms</div>
+${context?.note ? `<div class="ctx">ℹ ${esc(context.note)}</div>` : ''}
 <div class="cards">
   <div class="card"><b>${sum.total}</b><span>遗留写法命中</span></div>
   <div class="card"><b>${sum.mdi}</b><span>迁移债务指数 MDI</span></div>
@@ -142,6 +169,8 @@ ${diffBlock}
 <table><thead><tr><th>级别</th><th>检测项</th><th>命中</th><th>权重</th><th>处置建议</th></tr></thead>
 <tbody>${rows}</tbody></table>
 ${heavy.length ? `<h2>最重的文件</h2><table><thead><tr><th>文件</th><th>命中</th><th></th></tr></thead><tbody>${heavyRows}</tbody></table>` : ''}
+${dirRows ? `<h2>按目录聚合（Top 15，按 MDI 降序）</h2><table><thead><tr><th>目录</th><th>命中</th><th>MDI</th><th>文件数</th></tr></thead><tbody>${dirRows}</tbody></table>` : ''}
+${contractBlock}
 ${deps.length ? `<h2>依赖风险</h2><table><thead><tr><th>包</th><th>当前版本</th><th>处置</th></tr></thead><tbody>${depRows}</tbody></table>` : ''}
 ${compatRows ? `<h2>兼容性提醒（能装但要确认）</h2><table><thead><tr><th>包</th><th>当前版本</th><th>说明</th></tr></thead><tbody>${compatRows}</tbody></table>` : ''}
 <h2>逐条明细（含行号）</h2>
@@ -154,7 +183,7 @@ ${detail}
  * 生成 Markdown 报告 —— 适合贴进 PR 描述或周报。
  */
 export function renderMarkdown(data) {
-  const { summary: sum, deps, libCompat = [], findings, diff } = data
+  const { summary: sum, deps, libCompat = [], findings, diff, context, byDir = [], contracts } = data
   const target = data.label || data.target
   const relevant = RULES.filter((r) => sum.byRule[r.id])
   const out = []
@@ -163,6 +192,10 @@ export function renderMarkdown(data) {
   out.push('')
   out.push(`目标：\`${target}\``)
   out.push('')
+  if (context?.note) {
+    out.push(`> ℹ ${context.note}`)
+    out.push('')
+  }
   out.push(`| 指标 | 值 |`)
   out.push(`| --- | --- |`)
   out.push(`| 遗留写法命中 | **${sum.total}** |`)
@@ -214,6 +247,34 @@ export function renderMarkdown(data) {
     out.push('')
     for (const h of heavy) out.push(`- \`${h.file}\` — ${h.count} 处`)
     out.push('')
+  }
+
+  if (byDir.length) {
+    out.push(`### 按目录聚合（Top 15，按 MDI 降序）`)
+    out.push('')
+    out.push(`| 目录 | 命中 | MDI | 文件数 |`)
+    out.push(`| --- | --: | --: | --: |`)
+    for (const d of byDir.slice(0, 15)) out.push(`| \`${d.dir}\` | ${d.count} | ${d.mdi} | ${d.files} |`)
+    out.push('')
+  }
+
+  if (contracts) {
+    out.push(`### v-model 契约扫描（不计入 MDI）`)
+    out.push('')
+    out.push(`- 声明 model 选项的组件：**${contracts.modelComponents.length}** 个`)
+    out.push(
+      `- 需改 \`v-model:propName\` 的调用点：**${contracts.mismatches.length}** 处（相对 import 确定性关联）`,
+    )
+    out.push(`- 未能关联的无参 v-model：${contracts.unresolvedCount} 处（别名 import / 全局注册，需人工核对）`)
+    out.push('')
+    if (contracts.mismatches.length) {
+      out.push(`| 调用点 | 改为 | 组件契约 |`)
+      out.push(`| --- | --- | --- |`)
+      for (const m of contracts.mismatches.slice(0, 50)) {
+        out.push(`| \`${m.file}:${m.line}\` \`<${m.tag}>\` | \`v-model:${m.prop}\` | prop:${m.prop} / event:${m.event} |`)
+      }
+      out.push('')
+    }
   }
 
   out.push(`<sub>由 [vue2-migration-scanner](https://github.com/Jabo2017/vue2-migration-scanner) 生成</sub>`)

@@ -14,6 +14,8 @@ export function scanText(code, file = '<inline>') {
   const lines = code.split(/\r?\n/)
 
   for (const rule of RULES) {
+    // rules.files（可选）：限定该规则只对某些扩展名生效（如深度选择器只查样式文件，避开 JS 的 >>> 位运算）
+    if (rule.files && !rule.files.test(file)) continue
     rule.pattern.lastIndex = 0
     let m
     while ((m = rule.pattern.exec(code)) !== null) {
@@ -38,6 +40,66 @@ export function scanText(code, file = '<inline>') {
 /** 按 MDI 分数返回量级分档 */
 export function bandFor(mdi) {
   return MDI_BANDS.find((b) => mdi < b.max)
+}
+
+/**
+ * 按目录聚合命中 —— 迁移排期是按模块组织的，不是按文件，报告也要能按模块看。
+ * 纯聚合，不做任何新判定，符合「稳定判定」原则。
+ * @param {import('./rules.mjs').Finding[]} findings
+ * @param {number} [limit] 最多返回多少个目录（按 MDI 降序取前 n）
+ * @returns {{ dir: string, count: number, mdi: number, files: number }[]}
+ */
+export function groupDirs(findings, limit = 50) {
+  const weightOf = new Map(RULES.map((r) => [r.id, r.weight]))
+  /** @type {Map<string, { dir: string, count: number, mdi: number, files: Set<string> }>} */
+  const map = new Map()
+  for (const f of findings) {
+    const p = f.file.replace(/\\/g, '/')
+    const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '.'
+    let cell = map.get(dir)
+    if (!cell) map.set(dir, (cell = { dir, count: 0, mdi: 0, files: new Set() }))
+    cell.count++
+    cell.mdi += weightOf.get(f.ruleId) ?? 1
+    cell.files.add(f.file)
+  }
+  return [...map.values()]
+    .map((c) => ({ dir: c.dir, count: c.count, mdi: Math.round(c.mdi * 10) / 10, files: c.files.size }))
+    .sort((a, b) => b.mdi - a.mdi || b.count - a.count)
+    .slice(0, limit)
+}
+
+/**
+ * 检测 Vue 大版本与 compat 状态，切换报告口径。
+ * 判定依据只有 package.json 里的版本号事实，不做推断 —— 符合「稳定判定」原则。
+ *
+ * Vue 3（尤其挂了 @vue/compat）项目里，同样的「Vue 2 写法命中」含义完全不同：
+ * 不是「还没开始迁移」的进度起点，而是「过渡期仍在运行、切 MODE 3 / 移除 compat 前必须清零」的阻塞清单。
+ * @param {{ dependencies?: Record<string,string>, devDependencies?: Record<string,string> } | null} [pkg]
+ */
+export function detectContext(pkg) {
+  const all = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) }
+  const vueVersion = String(all.vue ?? '')
+  const majorStr = /^[~^>=\s]*v?(\d+)/.exec(vueVersion)?.[1]
+  const vueMajor = majorStr ? Number(majorStr) : null
+  const hasCompat = '@vue/compat' in all
+
+  if (vueMajor === 3 && hasCompat) {
+    return {
+      vueMajor,
+      hasCompat,
+      mode: 'vue3-compat',
+      note: '检测到 Vue 3 + @vue/compat：以下命中是过渡期仍在运行的 Vue 2 写法，即移除 compat（切 MODE 3）前必须清零的阻塞清单',
+    }
+  }
+  if (vueMajor === 3) {
+    return {
+      vueMajor,
+      hasCompat,
+      mode: 'vue3',
+      note: '检测到 Vue 3：以下命中是残留的 Vue 2 写法，可能运行时报错或产生静默行为差异',
+    }
+  }
+  return { vueMajor, hasCompat: false, mode: vueMajor === 2 ? 'vue2' : 'unknown', note: null }
 }
 
 /**

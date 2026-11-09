@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { scanText, summarize, checkDeps, checkLibCompat, bandFor, diffReports } from '../src/scan.mjs'
+import { scanText, summarize, checkDeps, checkLibCompat, bandFor, diffReports, groupDirs, detectContext } from '../src/scan.mjs'
 import { RULES } from '../src/rules.mjs'
 
 test('scanText 精确报出行号', () => {
@@ -33,6 +33,71 @@ test('scanText 命中 filters 与全局 API', () => {
   const found = scanText(code, 'main.js')
   assert.ok(found.some((f) => f.ruleId === 'global-api'))
   assert.ok(found.some((f) => f.ruleId === 'filters'))
+})
+
+test('filters 规则不把插值里的 || 误报成管道过滤器', () => {
+  // 实战教训：早期版本曾把 150+ 处 `{{ a || b }}` 算成 filters，误报率 76%
+  const orExpr = scanText("<span>{{ text || '默认值' }}</span>", 'a.vue')
+  assert.equal(orExpr.filter((f) => f.ruleId === 'filters').length, 0)
+
+  const pipe = scanText('<span>{{ price | toFixed(2) }}</span>', 'a.vue')
+  assert.equal(pipe.filter((f) => f.ruleId === 'filters').length, 1)
+
+  const mixed = scanText('{{ a | b || c }}', 'a.vue') // 罕见混合写法，含真管道，报出来是对的
+  assert.equal(mixed.filter((f) => f.ruleId === 'filters').length, 1)
+})
+
+test('scanText 命中 .native 修饰符两种写法', () => {
+  const at = scanText('<Comp @click.native="fn" />', 'a.vue')
+  assert.equal(at.filter((f) => f.ruleId === 'native-modifier').length, 1)
+  const von = scanText('<Comp v-on:click.native="fn" />', 'b.vue')
+  assert.equal(von.filter((f) => f.ruleId === 'native-modifier').length, 1)
+})
+
+test('scanText 命中 $scopedSlots', () => {
+  const found = scanText('const x = this.$scopedSlots.default', 'a.vue')
+  assert.equal(found.filter((f) => f.ruleId === 'scoped-slots').length, 1)
+})
+
+test('scanText 命中 $set / $delete 实例 API', () => {
+  const found = scanText('this.$set(obj, "k", 1)\nthis.$delete(obj, "k")', 'a.vue')
+  const ids = found.filter((f) => f.ruleId === 'instance-set')
+  assert.equal(ids.length, 2)
+  assert.equal(ids[0].line, 1)
+  assert.equal(ids[1].line, 2)
+})
+
+test('scanText 命中组件 model 选项但不误报相邻单词', () => {
+  const hit = scanText('export default {\n  model: {\n    prop: "value",\n    event: "change"\n  }\n}', 'Comp.vue')
+  assert.equal(hit.filter((f) => f.ruleId === 'model-option').length, 1)
+
+  // 带前缀的键（如 dataModel: {）不应命中 —— \b 边界检查
+  // 说明：行首缩进的 `model: {` 普通对象键与组件选项在正则层面无法区分，属可接受多报，
+  // 以 file:line 逐条核对为准（与 README「局限」一节口径一致）
+  const prefix = scanText('const dataModel = { a: 1 }', 'x.js')
+  assert.equal(prefix.filter((f) => f.ruleId === 'model-option').length, 0)
+})
+
+test('scanText 命中 render(h) 与 staticRenderFns', () => {
+  const code = 'export default {\n  render(h) { return h("div") },\n  staticRenderFns: []\n}'
+  const found = scanText(code, 'Comp.vue')
+  assert.equal(found.filter((f) => f.ruleId === 'render-h').length, 2)
+})
+
+test('deep-selector 只在样式类文件里命中，JS 的 >>> 位运算不报', () => {
+  const vue = scanText('<style>.a >>> .b { color: red }</style>', 'a.vue')
+  assert.equal(vue.filter((f) => f.ruleId === 'deep-selector').length, 1)
+
+  const scss = scanText('.a ::v-deep .b { color: red }', 'a.scss')
+  assert.equal(scss.filter((f) => f.ruleId === 'deep-selector').length, 1)
+
+  const jsShift = scanText('const h = (n >>> 0).toString(16)', 'hash.js')
+  assert.equal(jsShift.filter((f) => f.ruleId === 'deep-selector').length, 0)
+})
+
+test('scanText 命中 :attr="false" 绑定', () => {
+  const found = scanText('<Comp :disabled="false" />', 'a.vue')
+  assert.equal(found.filter((f) => f.ruleId === 'attr-false').length, 1)
 })
 
 test('scanText 忽略 Vue 3 的 createApp 写法', () => {
@@ -136,6 +201,37 @@ test('diffReports 容忍缺少字段的基线', () => {
   assert.equal(d.mdi.before, 0)
   assert.equal(d.mdi.after, 2)
   assert.equal(d.addedCount, 0)
+})
+
+test('groupDirs 按目录聚合且 MDI 降序', () => {
+  const findings = [
+    ...scanText('beforeDestroy(){}\nbeforeDestroy(){}', 'src/views/heavy/List.vue'), // MDI 4
+    ...scanText('.sync=1', 'src/views/heavy/Item.vue'), // MDI 1
+    ...scanText('mixins: []', 'src/utils/x.js'), // MDI 1.5
+  ]
+  const dirs = groupDirs(findings)
+  assert.equal(dirs[0].dir, 'src/views/heavy')
+  assert.equal(dirs[0].count, 3)
+  assert.equal(dirs[0].mdi, 5)
+  assert.equal(dirs[0].files, 2)
+  assert.equal(dirs[1].dir, 'src/utils')
+})
+
+test('detectContext 依据 package.json 事实切换报告口径', () => {
+  const vue2 = detectContext({ dependencies: { vue: '^2.7.16' } })
+  assert.equal(vue2.mode, 'vue2')
+  assert.equal(vue2.note, null)
+
+  const compat = detectContext({ dependencies: { vue: '^3.5.42', '@vue/compat': '^3.5.42' } })
+  assert.equal(compat.mode, 'vue3-compat')
+  assert.ok(compat.note.includes('@vue/compat'))
+
+  const vue3 = detectContext({ dependencies: { vue: '^3.5.42' } })
+  assert.equal(vue3.mode, 'vue3')
+
+  const none = detectContext({})
+  assert.equal(none.vueMajor, null)
+  assert.equal(none.mode, 'unknown')
 })
 
 test('每条规则的 pattern 都带 g 标志且能重置 lastIndex', () => {

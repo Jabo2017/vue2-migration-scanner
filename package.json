@@ -1,6 +1,6 @@
 {
   "name": "vue2-migration-scanner",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "扫描 Vue 2 项目遗留写法（生命周期 / .sync / slot-scope / filters / 全局 API / $on / mixins）与依赖风险，输出文件:行号清单、HTML/Markdown 报告，并用 MDI 指数把迁移成本量化成数字。零依赖，npx 直接跑",
   "type": "module",
   "bin": {
